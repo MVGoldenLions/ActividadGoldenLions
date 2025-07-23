@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Viborita 🐍 - Golden Lions Edition</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --bg: #2b1e0f;
+      --accent: #ffc107;
+      --snake: #ffeb3b;
+      --text: #fff3e0;
+    }
+
+     body {
+        background-color: #111;
+        color: white;
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 100vh;
+        padding: 20px;
+        text-align: center;
+    }
+
+    h1 {
+      margin-top: 10px;
+      
+    }
+
+    canvas {
+      background-color: #3e2b16;
+      border: 4px solid var(--accent);
+      margin-top: 10px;
+    }
+
+    #status, #message, #playerInfo {
+      margin-top: 10px;
+      font-size: 1.2em;
+    }
+
+    #controls {
+      display: grid;
+      grid-template-columns: repeat(3, 60px);
+      grid-template-rows: repeat(3, 60px);
+      gap: 1px;
+      margin-top: 20px;
+      padding-left: 60px;
+    }
+
+    .control-btn {
+      background: var(--accent);
+      border: none;
+      color: #000;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      touch-action: manipulation;
+    }
+
+    .control-btn:active {
+      background: #ff9800;
+    }
+
+    button {
+      margin: 15px 5px;
+      padding: 10px 20px;
+      font-size: 1em;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+    }
+
+    #layout {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    @media (min-width: 600px) {
+      #layout {
+        flex-direction: row;
+        gap: 30px;
+      }
+    }
+
+    #overlay, #winOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(43, 30, 15, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    .modal {
+      background: #fff3e0;
+      color: #000;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      max-width: 90%;
+    }
+
+    .modal select, .modal input {
+      width: 80%;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 1em;
+      border-radius: 5px;
+      border: none;
+    }
+
+    .modal button {
+      margin-top: 15px;
+      background: #ffb300;
+    }
+
+    .modal ul {
+      text-align: left;
+      padding: 0 20px;
+      font-size: 0.9em;
+    }
+
+    #playerInfo {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="overlay">
+    <div class="modal">
+      <h2>🎮 Bienvenido a la actividad de Goldel Lions 🦁 <br>Juego de la Viborita 🐍</h2>
+      <p>Ingresa tu nombre y elige tu equipo:</p>
+      <input type="text" id="playerName" placeholder="Tu nombre">
+      <select id="teamSelect">
+        <option value="🦁 Golden Lions">🦁 Golden Lions</option>
+        <option value="🍒 Sweet Cherry">🍒 Sweet Cherry</option>
+        <option value="🐍 Mystic Vipers">🐍 Mystic Vipers</option>
+        <option value="🧜‍♀️ Sea Gods">🧜‍♀️ Sea Gods</option>
+      </select>
+      <h3>📜 Instrucciones:</h3>
+      <ul>
+        <li>Mueve la viborita con las flechas</li>
+        <li>Come los emojis: 🐍, 🧜‍♀️, 🍒, 🦁</li>
+        <li>Cada uno te da 1 punto</li>
+        <li>¡Gana al llegar a 10 puntos!</li>
+        <li>Si chocas contigo o con los bordes: pierdes</li>
+      </ul>
+      <button onclick="closeOverlay()">Empezar</button>
+    </div>
+  </div>
+
+  <div id="winOverlay" style="display:none;">
+    <div class="modal">
+      <h2 id="congratsMsg"></h2>
+      <p id="finalScore"></p>
+      <button onclick="location.reload()">Jugar de nuevo</button>
+    </div>
+  </div>
+
+  <h1>Golden Lions 🦁</h1>
+  <div id="playerInfo"></div>
+
+  <div id="layout">
+    <div id="container">
+      <canvas id="game" width="300" height="300"></canvas>
+      <div id="status">Puntos: 0</div>
+      <div id="message"></div>
+      <button id="startBtn">Iniciar Juego</button>
+      <button id="restartBtn" style="display:none;">Reiniciar</button>
+      <div id="controls">
+        <div></div>
+        <button class="control-btn" onclick="setDirection(0,-1)">⬆️</button>
+        <div></div>
+        <button class="control-btn" onclick="setDirection(-1,0)">⬅️</button>
+        <div></div>
+        <button class="control-btn" onclick="setDirection(1,0)">➡️</button>
+        <div></div>
+        <button class="control-btn" onclick="setDirection(0,1)">⬇️</button>
+        <div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scale = 20;
+    const rows = canvas.height / scale;
+    const columns = canvas.width / scale;
+    const emojis = ['🐍','🧜‍♀️','🍒','🦁'];
+    let snake, food, direction, score, interval;
+    let playerName = '';
+    let team = '';
+    const statusEl = document.getElementById('status');
+    const messageEl = document.getElementById('message');
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const playerInfo = document.getElementById('playerInfo');
+    const congratsMsg = document.getElementById('congratsMsg');
+    const finalScore = document.getElementById('finalScore');
+
+    function closeOverlay() {
+      playerName = document.getElementById('playerName').value || "Jugador";
+      team = document.getElementById('teamSelect').value;
+      playerInfo.textContent = `👤 ${playerName} | Equipo: ${team}`;
+      document.getElementById('overlay').style.display = 'none';
+    }
+
+    class Snake {
+      constructor() {
+        this.body = [{ x: 5, y: 5 }];
+        this.grow = false;
+      }
+
+      move() {
+        const head = { x: this.body[0].x + direction.x, y: this.body[0].y + direction.y };
+        if (this.body.some(p => p.x === head.x && p.y === head.y) ||
+            head.x < 0 || head.x >= columns || head.y < 0 || head.y >= rows) {
+          gameOver(false);
+        }
+        this.body.unshift(head);
+        if (!this.grow) this.body.pop();
+        else this.grow = false;
+      }
+
+      eat(f) {
+        if (this.body[0].x === f.x && this.body[0].y === f.y) {
+          this.grow = true;
+          return true;
+        }
+        return false;
+      }
+
+      draw() {
+        ctx.fillStyle = 'var(--snake)';
+        this.body.forEach(part => {
+          ctx.fillRect(part.x * scale, part.y * scale, scale, scale);
+        });
+      }
+    }
+
+    function randomFood() {
+      const x = Math.floor(Math.random() * columns);
+      const y = Math.floor(Math.random() * rows);
+      const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+      return { x, y, emoji };
+    }
+
+    function drawFood(f) {
+      ctx.font = `${scale}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(f.emoji, f.x * scale + scale / 2, f.y * scale + scale / 2);
+    }
+
+    function update() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      snake.move();
+      if (snake.eat(food)) {
+        score++;
+        statusEl.textContent = `Puntos: ${score}`;
+        if (score >= 10) gameOver(true);
+        food = randomFood();
+      }
+      snake.draw();
+      drawFood(food);
+    }
+
+    function gameOver(won) {
+      clearInterval(interval);
+      restartBtn.style.display = won ? 'none' : 'inline-block';
+      startBtn.style.display = 'none';
+      if (won) {
+        congratsMsg.textContent = `🎉 ¡Felicidades ${playerName}!`;
+        finalScore.textContent = `Lograste ganar con el equipo ${team} con ${score} puntos.`;
+        document.getElementById('winOverlay').style.display = 'flex';
+      } else {
+        messageEl.textContent = "💥 ¡Perdiste!";
+      }
+    }
+
+    function startGame() {
+      snake = new Snake();
+      direction = { x: 1, y: 0 };
+      score = 0;
+      food = randomFood();
+      statusEl.textContent = "Puntos: 0";
+      messageEl.textContent = "";
+      restartBtn.style.display = 'none';
+      interval = setInterval(update, 150);
+    }
+
+    function setDirection(x, y) {
+      if ((direction.x !== -x || direction.y !== -y)) {
+        direction = { x, y };
+      }
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowUp') setDirection(0, -1);
+      else if (e.key === 'ArrowDown') setDirection(0, 1);
+      else if (e.key === 'ArrowLeft') setDirection(-1, 0);
+      else if (e.key === 'ArrowRight') setDirection(1, 0);
+    });
+
+    startBtn.onclick = startGame;
+    restartBtn.onclick = startGame;
+  </script>
+</body>
+</html>
